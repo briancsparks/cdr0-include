@@ -1,15 +1,29 @@
 
+/**
+ *
+ */
+
 const path = require('path');
 const fs = require('fs');
-
+const os = require('os');
 
 module.exports = include;
 
 
+/*
+ * Usage:
+ *
+ *   const include = requre('@cdr0/include')(module);
+ *
+ *   const redFish    = include('red-fish')        || require('red-fish');
+ *   const blueFish   = include('@org/blue-fish')  || require('@org/blue-fish');
+ *
+ */
+
 function include(mod) {
 
-  return function(filename) {
-    const includedDirname = siblingPath(mod.path, filename);
+  return function(pkgname) {
+    const includedDirname = siblingPathOfProject(mod.path, pkgname);
     if (includedDirname) {
       return require(includedDirname);
     }
@@ -19,15 +33,19 @@ function include(mod) {
 }
 
 
-
-
-
 // let   dirpath = module.path;
 // // dirpath = path.normalize(path.join(module.path, '..', '..'));
-// const modpath = siblingPath(dirpath, 'slim-cdr0-server');
+// const modpath = siblingPathOfProject(dirpath, 'slim-cdr0-server');
 // console.log(`Found: include(${modpath})`);
 
-function siblingPath(startPath, modName) {
+/**
+ * Find the directory that contains the mod (out of the dirs that are siblings of our project dir.)
+ *
+ * @param startPath
+ * @param modname
+ * @returns {null}
+ */
+function siblingPathOfProject(startPath, modname) {
   let dirpath = startPath;
 
   let result = null;
@@ -36,8 +54,28 @@ function siblingPath(startPath, modName) {
     dirpath = path.normalize(path.join(projectRootDir, '..'));
 
     let parentDir = fs.opendirSync(dirpath);
-    result = siblingPath_(parentDir, modName);
+    result = siblingPath_(parentDir, modname);
     parentDir.closeSync();
+
+    // We might not have it yet. If not, look in the children of our grand-parents
+    if (!result) {
+      dirpath = path.normalize(path.join(projectRootDir, '..', '..'));
+
+      let grandParentDir = fs.opendirSync(dirpath);
+      result = siblingPath_(grandParentDir, modname);
+      grandParentDir.closeSync();
+    }
+
+    // Might not have it, yet. Get the ~/.cdr0/config value
+    if (!result) {
+      const configname  = path.join(os.homedir(), '.cdr0', 'config');
+      const config      = safeRequire(configname);
+      let   dirPath     = config.includeRoot;
+
+      let configDir = fs.opendirSync(dirpath);
+      result = siblingPath_(configDir, modname);
+      configDir.closeSync();
+    }
   }
 
   return result;
@@ -63,6 +101,12 @@ function siblingPath(startPath, modName) {
   }
 }
 
+/**
+ * Like `require()`, but returns undefined instead of throwing if the module doesn't load.
+ *
+ * @param filename
+ * @returns {*}
+ */
 function safeRequire(filename) {
   try {
     return require(filename);
@@ -73,6 +117,8 @@ function safeRequire(filename) {
 
 /**
  * Returns the root dir of the project.
+ *
+ * Walks up the directory structure - parent by parent - until it finds this project's `package.json` file.
  *
  * @param dirpath_
  * @returns {null}
@@ -96,7 +142,7 @@ function projectRoot(dirpath_) {
  * @param dirname
  * @returns {string|boolean}
  */
-function packageJsonStr(dirname) {
+function packageJsonAtDirname(dirname) {
   const dir = fs.opendirSync(dirname);
   const result = packageJson(dir);
   dir.closeSync();
@@ -104,19 +150,19 @@ function packageJsonStr(dirname) {
 }
 
 /**
- * Returns the full path of the package.json file in the dir, if it exists, falsey otherwise.
+ * Returns the full path of the package.json file in the dirent, if it exists, falsey otherwise.
  *
- * @param dir
+ * @param dirent
  * @returns {string|boolean}
  */
-function packageJson(dir) {
-  if (typeof dir === 'string') {
-    return packageJsonStr(dir);
+function packageJson(dirent) {
+  if (typeof dirent === 'string') {
+    return packageJsonAtDirname(dirent);
   }
 
-  for (let dirent = dir.readSync(); dirent; dirent = dir.readSync()) {
+  for (let dirent = dirent.readSync(); dirent; dirent = dirent.readSync()) {
     if (dirent.isFile() && dirent.name === 'package.json') {
-      return  path.join(dir.path, dirent.name);
+      return  path.join(dirent.path, dirent.name);
     }
   }
 
