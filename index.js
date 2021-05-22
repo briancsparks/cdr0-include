@@ -73,13 +73,17 @@ function siblingPathOfProject(startPath, modname) {
     // ----- Might not have it, yet. Get the ~/.cdr0/config value
     if (!result) {
       const configname  = path.join(os.homedir(), '.cdr0', 'config');
-      const config      = safeRequire(configname);
-      let   dirpath     = config.includeRoot;
-      lookedIn.push(dirpath);
+      if (configname) {
+        const config      = safeRequire(configname);
+        if (config && config.includeRoot) {
+          let   dirpath     = config.includeRoot;
+          lookedIn.push(dirpath);
 
-      let configDir = fs.opendirSync(dirpath);
-      result = siblingPath_(configDir, modname);
-      configDir.closeSync();
+          let configDir = fs.opendirSync(dirpath);
+          result = siblingPath_(configDir, modname);
+          configDir.closeSync();
+        }
+      }
     }
   }
 
