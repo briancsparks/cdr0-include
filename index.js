@@ -48,35 +48,42 @@ function include(mod) {
 function siblingPathOfProject(startPath, modname) {
   let dirpath = startPath;
 
-  let result = null;
-  let projectRootDir = projectRoot(dirpath);
+  const lookedIn = [];
+  let   result = null;
+  let   projectRootDir = projectRoot(dirpath);
+
   if (projectRootDir) {
     dirpath = path.normalize(path.join(projectRootDir, '..'));
+    lookedIn.push(dirpath);
 
     let parentDir = fs.opendirSync(dirpath);
     result = siblingPath_(parentDir, modname);
     parentDir.closeSync();
 
-    // We might not have it yet. If not, look in the children of our grand-parents
+    // ----- We might not have it yet. If not, look in the children of our grand-parents
     if (!result) {
       dirpath = path.normalize(path.join(projectRootDir, '..', '..'));
+      lookedIn.push(dirpath);
 
       let grandParentDir = fs.opendirSync(dirpath);
       result = siblingPath_(grandParentDir, modname);
       grandParentDir.closeSync();
     }
 
-    // Might not have it, yet. Get the ~/.cdr0/config value
+    // ----- Might not have it, yet. Get the ~/.cdr0/config value
     if (!result) {
       const configname  = path.join(os.homedir(), '.cdr0', 'config');
       const config      = safeRequire(configname);
-      let   dirPath     = config.includeRoot;
+      let   dirpath     = config.includeRoot;
+      lookedIn.push(dirpath);
 
       let configDir = fs.opendirSync(dirpath);
       result = siblingPath_(configDir, modname);
       configDir.closeSync();
     }
   }
+
+  // console.log(`cdr0-include(${modname}) looked in:`, lookedIn);
 
   return result;
 
@@ -152,17 +159,17 @@ function packageJsonAtDirname(dirname) {
 /**
  * Returns the full path of the package.json file in the dirent, if it exists, falsey otherwise.
  *
- * @param dirent
+ * @param dirent0
  * @returns {string|boolean}
  */
-function packageJson(dirent) {
-  if (typeof dirent === 'string') {
-    return packageJsonAtDirname(dirent);
+function packageJson(dirent0) {
+  if (typeof dirent0 === 'string') {
+    return packageJsonAtDirname(dirent0);
   }
 
-  for (let dirent = dirent.readSync(); dirent; dirent = dirent.readSync()) {
+  for (let dirent = dirent0.readSync(); dirent; dirent = dirent0.readSync()) {
     if (dirent.isFile() && dirent.name === 'package.json') {
-      return  path.join(dirent.path, dirent.name);
+      return  path.join(dirent0.path, dirent.name);
     }
   }
 
