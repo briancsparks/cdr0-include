@@ -9,7 +9,6 @@ const os = require('os');
 
 module.exports = include;
 
-
 /*
  * Usage:
  *
@@ -21,7 +20,6 @@ module.exports = include;
  */
 
 function include(mod) {
-
   return function(pkgname) {
     const includedDirname = siblingPathOfProject(mod.path, pkgname);
     if (includedDirname) {
