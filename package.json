@@ -1,6 +1,6 @@
 {
   "name": "@cdr0/include",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Like require, but gets from sibling directory if present.",
   "main": "index.js",
   "scripts": {
